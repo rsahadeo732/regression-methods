@@ -1,0 +1,85 @@
+---
+title: "Sahadeo_Assignment5-3"
+author: "Rishi Sahadeo"
+date: "2025-10-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-data}
+# load data set
+brewing <- read.table("C:/Users/supaq/OneDrive/Desktop/Rutgers Courses/Regression Methods - Fall 2025/brewing_data.txt", header = TRUE, sep = "\t")
+
+dim(brewing)
+head(brewing, 5)
+
+```
+
+### 1) Visually display the data in an appropriate graph and comment on anything that may be of note. In particular, are the assumptions needed for fitting the simple linear model met?
+
+```{r plot-brewing}
+plot(brewing$Temperature, brewing$Alcohol_Percentage,
+     xlab = "Temperature (F)",
+     ylab = "Alcohol Percentage",
+     main = "Alcohol vs Temperature",
+     pch = 19)
+
+```
+
+The scatterplot of Alcohol Percentage vs. Temperature shows an overall negative linear trend. As temperature increases, alcohol percentage tends to decrease. One point is a clear outlier with a negative alcohol percentage which must be addressed. The remaining data appear to cluster fairly evenly around a straight line trend. Whether the variance is constant cannot be concluded from the scatterplot alone.
+
+### 2) Initially, the brewer would just like to get a rough estimate of what the alcohol content would be if he ferments the batch at a given temperature. Are enough of the regression assumptions satisfied so that simple linear regression can be used towards the prior-mentioned goal? If not, what deviations do you need to address and how do you address them? 
+
+```{r clean-flag}
+which(brewing$Alcohol_Percentage < 0)
+```
+
+```{r clean-data}
+brewing_clean <- subset(brewing, Alcohol_Percentage >= 0)
+dim(brewing);
+dim(brewing_clean)
+```
+
+For the brewer's goal of obtaining a rough estimate of alcohol content at a given temperature, the assumptions of a simple linear regression are reasonably well met after addressing one clear violation. The scatterplot showed a negative alcohol percentage value at observation 186. Since alcohol content cannot be negative, this is a data entry or measurement error and was excluded from the analysis.
+
+```{r plot-clean}
+plot(brewing_clean$Temperature, brewing_clean$Alcohol_Percentage,
+     xlab = "Temperature (°F)",
+    ylab = "Alcohol (%)",
+     main = "Alcohol vs Temperature — After Removing Outlier",
+     pch = 19)
+
+```
+
+After removing the negative alcohol value, the scatterplot shows a clear negative linear relationship. As temperature increases, alcohol percentage decreases. The points cluster closely around a straight-line trend, with no obvious curvature or extreme deviations.
+
+### 3) After addressing any necessary issues in part 2, fit the simple linear model to the data. Provide the parameter estimates and the R2 value.
+
+```{r fit-slr}
+brew_fit <- lm(Alcohol_Percentage ~ Temperature, data = brewing_clean)
+brew_fit
+
+```
+
+```{r fit-summary}
+summary(brew_fit)
+
+```
+
+```{r fit-extract}
+coef(brew_fit)
+summary(brew_fit)$r.squared
+
+```
+
+Fitting a simple linear regression of Alcohol % on Temperature (F) using the clean data yields, Alcohol% = 26.174 - 0.358 * Temperature. 
+A 1 degree F increase in temperature is associated with an average 0.358 percentage-point decrease in alcohol content within the observed temperature range. The intercept 26.174% is the fitted mean at 0 degree F. The models R^2 = 0.869 indicates that about 86.9% of the variability in alcohol percentage is explained by temperature in this linear model. The estimates and R^2 support a strong negative linear relationship in this dataset.
+
+Estimates: Intercept = 26.174, Slope = -0.358, R^2 = 0.869.
+
+
+
+

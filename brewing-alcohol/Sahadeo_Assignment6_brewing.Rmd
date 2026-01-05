@@ -1,0 +1,172 @@
+---
+title: "Sahadeo_Assignment6_brewing"
+author: "Rishi Sahadeo"
+date: "2025-10-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1. For any given temperature, the brewer would like to get bands that encompass what the final alcohol content of a batch would be with probability 95%.  Can one use the simple linear regression on the data ‘as is’ for this goal, or are there still model deviations that need to be addressed?  If so, what are the deviations and how do you address them? 
+
+```{r load-check-data}
+
+brew <- read.table("C:/Users/supaq/OneDrive/Desktop/Rutgers Courses/Regression Methods - Fall 2025/brewing_data.txt", header = TRUE, sep = "\t")
+
+str(brew)
+head(brew,10)
+summary(brew)
+
+plot(brew$Temperature, brew$Alcohol_Percentage,
+     xlab = "Temperature (F)",
+     ylab = "Alcohol Percentage",
+     main = "Alcohol Percentage vs Temperature",
+     pch = 16
+     )
+
+```
+
+Due to outliers, specifically one responding with a negative alcohol percentage, we cannot use a simple linear regression on the data "as is" to achieve the brewers goal. We need to address the outliet by removing it from the data. 
+
+```{r clean-data}
+
+# remove outlier response value
+brew_clean <- subset(brew, Alcohol_Percentage >= 0)
+
+# verify the value is dropped
+nrow(brew); nrow(brew_clean)
+
+# plot after cleaning
+plot(brew_clean$Temperature, brew_clean$Alcohol_Percentage,
+     xlab = "Temperature (°F)",
+     ylab = "Alcohol Percentage",
+     main = "Alcohol % vs Temperature (cleaned)",
+     pch = 16)
+
+```
+
+Now we need to check linearity and constant variance via the residuals vs fitted plot.
+
+```{r slr-diag}
+# slr diagnostics on cleaned data 
+m_slr <- lm(Alcohol_Percentage ~ Temperature, data = brew_clean)
+
+plot(fitted(m_slr), resid(m_slr),
+     xlab = "Fitted values",
+     ylab = "Residuals",
+     main = "SLR: Residuals vs Fitted (cleaned)",
+     pch = 16)
+abline(h = 0, lty = 2)
+
+qqnorm(resid(m_slr), pch = 16)
+qqline(resid(m_slr))
+
+```
+
+No, simple linear regression cannot be used as-is. The raw data have 200 rows and include one impossible alcohol value (about –15%). I removed that row, so the data are now 199 rows. After cleaning, the residuals-vs-fitted plot from the simple linear model shows a clear bend and slightly wider spread at higher fitted values. That means the mean relationship isn’t perfectly straight and the variance isn’t perfectly constant.
+
+### 2. After addressing any additional issues, obtain a new model for the data.  For a given temperature, x, write out the formula for the predicted alcohol content specified for your model.  Overlay the estimated regression curve on a scatter plot of the data, depicting the final alcohol content on the vertical axis, and the brewing temperature on the horizontal axis.
+
+```{r}
+#  fit quadratic model and overlay curve 
+m_quad <- lm(Alcohol_Percentage ~ Temperature + I(Temperature^2), data = brew_clean)
+
+# scatter, fitted curve
+plot(brew_clean$Temperature, brew_clean$Alcohol_Percentage,
+     xlab = "Temperature (°F)", ylab = "Alcohol Percentage",
+     main = "Quadratic fit: Alcohol % vs Temperature", pch = 16)
+
+x_grid <- data.frame(Temperature = seq(min(brew_clean$Temperature),
+                                       max(brew_clean$Temperature),
+                                       length.out = 300))
+fit_curve <- predict(m_quad, newdata = x_grid)
+lines(x_grid$Temperature, fit_curve, lwd = 2)
+
+# print the prediction formula with fitted numbers
+b <- coef(m_quad)
+a0 <- unname(b[1])  # intercept
+a1 <- unname(b[2])  # Temperature
+a2 <- unname(b[3])  # Temperature^2
+cat(sprintf("Prediction formula (Q2): y_hat(x) = %.8f + %.8f*x + %.8f*x^2\n", a0, a1, a2))
+
+# show the fix is reasonable
+par(mfrow = c(1, 2))
+plot(fitted(m_quad), resid(m_quad),
+     xlab = "Fitted", ylab = "Residuals",
+     main = "Quadratic: Residuals vs Fitted", pch = 16); abline(h = 0, lty = 2)
+qqnorm(resid(m_quad), pch = 16)
+
+qqline(resid(m_quad))
+
+par(mfrow = c(1, 1))
+
+```
+
+After removing the one impossible alcohol value in Q1, I fit a quadratic model for alcohol percentage as a function of temperature. Using my fitted coefficients, the prediction formula is:
+
+y_hat(x) = −15.07014529 + 1.01336053x − 0.01136844x^2
+
+I plotted this curve on top of the scatter (alcohol on the y-axis, temperature on the x-axis). The curve matches the gentle bend in the data and will be used for the 95% prediction bands in Q3.
+
+### 3) As mentioned in part 1, for any given fermentation temperature the brewer would like to obtain bands that encompass what the final alcohol content of a batch would be with probability 95%.  Write out a formula for the upper and lower endpoints for these bands as a function of the explanatory variable (possibly transformed). Overlay these bands on the plot created in part 2.
+
+```{r predict}
+
+# 95% prediction bands for the quadratic model m_quad
+
+# temperature grid
+x_grid <- data.frame(Temperature = seq(min(brew_clean$Temperature),
+                                       max(brew_clean$Temperature),
+                                       length.out = 300))
+
+# point predictions and 95% prediction intervals
+pred_PI <- predict(m_quad, newdata = x_grid, interval = "prediction", level = 0.95)
+
+# scatter, fitted curve, 95% prediction bands
+plot(brew_clean$Temperature, brew_clean$Alcohol_Percentage,
+     xlab = "Temperature (°F)", ylab = "Alcohol Percentage",
+     main = "Quadratic fit with 95% prediction bands", pch = 16)
+
+# fitted curve
+lines(x_grid$Temperature, pred_PI[, "fit"], lwd = 2)
+
+# 95% prediction band
+lines(x_grid$Temperature, pred_PI[, "lwr"], lty = 2)
+lines(x_grid$Temperature, pred_PI[, "upr"], lty = 2)
+
+legend("topright",
+       legend = c("Fitted mean", "95% prediction band"),
+       lty = c(1, 2), lwd = c(2, 1), bty = "n")
+
+
+s  <- summary(m_quad)$sigma
+df <- df.residual(m_quad)
+t_star <- qt(0.975, df)
+c(s = s, df = df, t_star = t_star)
+
+
+```
+
+Predicted mean at temperature x (F):
+
+y_hat(x) = −15.07014529 + 1.01336053x − 0.0113684x^2
+
+Let: s = 0.3631 (residual standard error from the quadratic fit)
+
+df = 196 (n − p = 199 − 3)
+
+t_star = t_{0.975, 196} ~ 1.97
+
+Then the 95% prediction band endpoints are:
+
+Lower(x) = y_hat(x) − t_star * s * sqrt(1 + v(x))
+
+Upper(x) = y_hat(x) + t_star * s * sqrt(1 + v(x))  
+
+Here v(x) is the model-based variance term for the mean at x; R computes it inside
+predict(m_quad, interval = "prediction").
+
+For each temperature x, I used the quadratic model from Q2 to compute pointwise 95% prediction bands for a new batch’s alcohol percentage. I overlaid the fitted curve and the upper/lower bands on the scatter plot. These bands show where a single future batch is expected to fall about 95% of the time at that temperature.
+
