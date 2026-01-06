@@ -1,0 +1,162 @@
+---
+title: "Sahadeo_Assignment8_MPG"
+author: "Rishi Sahadeo"
+date: "2025-10-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Create a scatterplot of the data from the calibration runs, plotting the MPG on the vertical axis and speed on the horizontal axis (be sure to properly label your plot).  Does there appear to be an association between the speed the bike is driven at and the MPG?  If so, explain what the nature of the relationship seems to be.  
+
+```{r load-data}
+
+# load the data
+data <- read.table("C:\\Users\\supaq\\OneDrive\\Desktop\\Rutgers Courses\\Regression Methods - Fall 2025\\mpg-1.txt", header = TRUE)
+
+# cols
+names(data) <- c("speed", "mpg")
+
+# view data
+head(data)
+
+# scatterplot
+plot(
+  x = data$speed,
+  y = data$mpg,
+  xlab = "Speed (MPH)",
+  ylab = "Fuel Efficieny (MPG)",
+  main = "Fuel Efficieny vs. Speed for Speed Demon Calibration Runs"
+)
+
+```
+
+There is a strong non linear relationship between speed and efficiency. The pattern resembles a concave-down parabola:  
+
+  - At speeds from 0-10 MPH the fuel efficiency values are low ranging from roughly     11 - 20 MPG. When idling at 0 MPH fuel is burned at a rate around 11 MPG           increasing to around 25 MPG at 20 MPH.
+  - As speeds increases to 50-70 MPH the MPG shows drastic improvements reading its     highest observed values between 38 MPG and 41 MPG which occurred around 70 MPH.
+  - As we increase to above 80 MPH fuel efficiency begins to decline. At 100-110       MPH, we observe drops of 27-30 MPG and the maximum speeds around 120 MPH shows     declines to 12-15 MPG.
+  
+Overall, the shows that the motorcycle achieves optimal efficiency at mid-range speeds and becomes less efficient when driving too slowly or too fast.
+
+2. The National Highway Traffic Safety Administration (NHTSA) requires all vehicles marketed in the US to provide ranges for what the mean MPG is at a variety of speeds. Treating MPG as the response variable and speed as the explanatory variable, are enough of the model assumptions satisfied in order to fit a polynomial model to this data towards the prior purpose?  If not, explain what must be done to address the deviations from the needed model assumptions (if necessary).
+
+Treating MPG as the response variable and speed MPH as the explanatory variable, the data satisfy most of the regression model assumptions needed to fit a polynomial model.  
+
+The scatter plot from Q1 shows a smooth curved, inverted U pattern between speed and fuel efficiency indicating that a polynomial, specifically a quadratic model can describe the relationship well. Each of the 200 calibration runs was conducted separately, so the observations are independent. The spread of MPG values remains consistent across most speeds, however it widens slightly at very low and very high speeds. The heteroscedasticity is acceptable for modeling but can be revisited for fitting if residual plots show stronger non constant variance. There are no extreme outliers suggesting residuals will be approximately normal once the trend is accounted for.  
+
+The assumptions required for regression are adequately met to fit a polynomial model. A quadratic polynomial will be the most appropriate starting form for capturing the observed curvature between speed and fuel efficiency.  
+
+3. After addressing any issues in part 2, fit a polynomial model to the data.  Clearly explain the process with which you went about arriving at the order of the polynomial model you fit (you will need to fit several polynomial models and compare them).  Explicitly write out the estimated model equation for the polynomial model you decided upon (on the transformed scales if data transformations were needed).  
+
+```{r poly-fit}
+# model fits
+model1 <- lm(mpg ~ speed, data = data)
+model2 <- lm(mpg ~ poly(speed, 2, raw = TRUE), data = data)
+model3 <- lm(mpg ~ poly(speed, 3, raw = TRUE), data = data)
+model4 <- lm(mpg ~ poly(speed, 4, raw = TRUE), data = data)
+
+summary(model1)
+summary(model2)
+summary(model3)
+summary(model4)
+
+```
+
+The linear model explains almost nothing.  
+The quadratic model improves fit as R^2 = 0.9478.  
+The cubic model adds no meaningful gain but has a p-val of 0.334.  
+The quartic model improves R^2 to 0.9615 and all terms are significant with a low p-value. An anova test can check if the improvement is significant.
+
+```{r anova}
+
+anova(model2, model4)
+
+```
+
+H_0: The quartic model adds no improvement, Beta_3 = Beta_4 = 0  
+H_a: Atleast one of Beta_3 or Beta_4 improves the fit.  
+
+Since p-value <0.001, we reject H_0.  
+The quartic model is a statistically significant improvement from the quadratic.  
+
+Polynomial regression models, linear, quadratic, cubic and quartic were fit with speed as the explanatory variable and MPG as the response. The linear model performed poorly with R^2 = 0.0001 and pval = 0.8855, while the quadratic model improved fit where R^2 increased to 0.9478. The cubic model provided no significant improvement and had pval = 0.334. The quartic model produced the highest R^2 = 0.9615 and adjusted R^2 = 0.9607, with all terms significant (pval < 0.001).  
+
+An ANOVA comparison between quadratic and quartic models (F = 34.7, pval < 0.001) confirmed that the additional terms improved model fit. The quartic model was the most appropriate representation of the relationships:  
+
+  - MPG_hat = 12.77 + 1.232(speed) - 0.02324(speed)^2 + 0.0002179(speed)^3 - 0.0000009162(speed)^4  
+  
+Fuel efficiency increases until roughly 65-70 MPH, then declines at higher speeds. The quartic form captures the rise and then fall behavior most accurately.
+
+4. On a scatter plot depicting the MPG on the vertical axis and speed on the horizontal axis (on their original, untransformed measurement scales), overlay the estimated model on the plot (in the event you transformed any of your variables, this may necessitate back transforming the polynomial model that was constructed on the transformed data)
+
+```{r overlay}
+
+# grid of speed
+speed_data <- seq(
+  from = min(data$speed),
+  to = max(data$speed),
+  length.out = 200
+)
+
+# predicted mpg from quadratic model
+predicted_mpg <- predict(
+  model4, newdata = data.frame(speed = speed_data)
+)
+
+# redo scatter plot
+plot(
+  x = data$speed,
+  y = data$mpg,
+  xlab = "Speed (MPH)",
+  ylab = "Fuel Efficiency and Quadratic Fit",
+  pch = 16,
+  cex = 0.7
+)
+
+# overlay the fitted quadratic curve
+lines(
+  x = speed_data,
+  y = predicted_mpg,
+  lwd = 2
+)
+```
+
+The scatter plot shows the observed MPG values vs speed, with the fitted quartic regression model overlaid on the original scales.  
+
+The fitted quartic curve closely follows the observed pattern showing peak fuel efficiency between the 65-70 MPH range and decreasing at both lower and higher speeds.
+
+5. From the model constructed in part 3, can one conclude that there is a statistically significant relationship between MPG and the speed?  Explain what procedure you used to determine so and why you arrived at your conclusion.
+
+```{r analysis}
+summary(model4)
+```
+
+Hypothesis Test:  
+H_0: Beta_1 = Beta_2 = Beta_3 = Beta_4 = 0, no relationship between speed and MPG  
+H_a: Atleast one Beta_i != 0
+
+Results: F = 1218, df = (4,195), pval < 2.2e16
+
+Decision: Reject H_0.
+
+The relationship between speed and MPG is statistically significant.  
+
+6. Calculate the coefficient of determination for the model on the original measurement scale (if transformations were applied to the data, calculations of the various sums of squares requires back transforming the fitted values from the polynomial model on the transformed data to get the fitted values and residuals on the original scale)
+
+```{r coef-deter}
+
+# display r squared and adjusted r squared
+cat("R-squared:", summary(model4)$r.squared, 
+    "\nAdjusted R-squared:", summary(model4)$adj.r.squared)
+
+```
+
+Coefficient of Determination: The quartic model achieved,  
+
+  - R^2 = 0.9615
+  - Adjusted R^2 = 0.9607
+  
+This means about 96.1% of the variability in fuel efficiency is explained by the speed of the motorcycle. The high R^2 confirms the fitted quartic model provides an strong representation of the observed data on the original scale.
