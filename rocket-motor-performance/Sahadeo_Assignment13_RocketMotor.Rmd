@@ -1,0 +1,191 @@
+---
+title: "Sahadeo_Assignment13_RocketMotors"
+author: "Rishi Sahadeo"
+date: "2025-12-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+1. Create a time-series plot of Rocket Motors closing stock price. Comment on anything of note. 
+
+```{r load-data}
+
+rocket <- read.table("Rocket_Motors-3.txt", header = TRUE, sep = "\t")
+head(rocket)
+
+# format  - check for na values
+rocket$Date <- as.Date(rocket$Date, format = "%d-%b-%y")
+summary(rocket$Date)
+sum(is.na(rocket$Date))
+
+```
+
+```{r time-series-plot}
+
+ggplot(rocket, aes(x = Date, y = Price_in_USD)) +
+  geom_line() +
+  labs(
+    title = "Rocket Motors Closing Stock Price (01Jan2020 - 26Sept2022)",
+    x = "Date",
+    y = "Closing Price - USD"
+  ) +
+  theme_minimal()
+
+```
+
+The time-series plot shows Rocket Motors closing stock price dipping slightly early in 2020, then beginning a steady increase through 2021. Starting in late 2021 and continuing into 2022, the price rises much more sharply, indicating accelerated growth, going from around $5-$10 near the start of the sample to around $200 by the end. The series has an upward trend and is non stationary, with the biggest gains occurring near the end of the time period.  
+
+2. It is needed to fit an ARIMA(p, d, q)  model to this data.  What degree of differencing needed (i.e. d) is needed in order to fit an ARIMA model?  Explain your rationale for arriving at the degree, providing any graphs and outputs that were used to inform your decision. 
+
+```{r acf-pacf-original}
+# grab closing price col
+price <- rocket$Price_in_USD
+
+# plotting area showing 2 rows 1 col
+par(mfrow = c(2,1))
+
+# plot acf of original price series
+acf(price, main = "ACF of Rocket Motors Price (Original)")
+
+# plot pacf or original price series
+pacf(price, main = "PACF of Rocket Motors Price (Original)")
+
+# default plot
+par(mfrow = c(1, 1))
+
+```
+
+  - ACF plot shows the correlation stays high and positive for many lags and does not die off quickly, showing the original price series is non stationary - a strong trend.  
+
+  - PACF plot shows one huge spike at lag 1 and then its small after.  
+  
+```{r acf_pacf_d1}
+
+# compute the first differenced series
+d1 <- diff(price, differences = 1)
+
+# show 3 plots stacked
+par(mfrow = c(3, 1))
+
+# plot the first differenced series
+plot(rocket$Date[-1], d1, type = "l",
+     main = "Rocket Motors Price (d1)",
+     xlab = "Date", ylab = "Change in Price (USD)")
+
+#  Plot ACF of d1 - first differenced series
+acf(d1, main = "ACF of First Differenced Price")
+
+# plot PACF of d1
+pacf(d1, main = "PACF of First Differenced Price")
+
+# reset plotting
+par(mfrow = c(1, 1))
+
+```
+
+  - The first differenced series d1 isn't fluctuating around a constant level and looks similar to the original, suggesting it is still not stationary. The ACF of the d1 is still high at many lags and does not die out. If differencing worked the ACF would drop off faster. We need to try a second difference.
+  
+```{r acf_pacf_d2}
+
+# compute the second differenced series
+d2 <- diff(price, differences = 2)
+
+# 3 plots stacked
+par(mfrow = c(3, 1))
+
+# time plot on d2
+plot(rocket$Date[-c(1,2)], d2, type="l",
+     main="Rocket Motors Price (d2)",
+     xlab="Date", ylab="Second Difference")
+
+# plot acf second differenced series
+acf(d2, main = "ACF of Second Differenced Price")
+
+# plot pacf second differenced series
+pacf(d2, main = "PACF of Second Differenced Price")
+
+# reset plotting
+par(mfrow = c(1,1))
+
+```
+
+  - ACF in the second differenced series show the correlations drop down instead of staying near 1 throughout the lags. The series appears to be stationary.  
+  
+  - PACF shows one big spike at lag 1 and a smaller one at lag 2 the nothing major after. This suggests a stationary differenced series.
+  
+To determine the degree of differencing d for an ARIMA(p,d,q) model, I examined the ACF/PACF of the series before and after differencing. The original closing price series showed very strong persistence, with the ACF staying large and positive across many lags, indicating a non stationary series. After first differencing the differenced series still displayed an upward drift and the ACF remained high across many lags, also indicating the series was still not stationary. After the second differencing, the ACF decayed much more quickly indicating the series was behaving stationary with short range dependence. The PACF showed a strong spike at lag 1 and a smaller spike at lag 2. A second difference is required, d = 2, for fitting an ARIMA model.
+
+3. After differencing the data the amount specified in part 2, what are the appropriate AR and MA orders needed (i.e. what are p and q)?  Explain your rationale for arriving at the orders, providing any graphs and outputs that were used to inform your decision.
+
+```{r p_and_q}
+
+# pull original closing price
+price <- rocket$Price_in_USD
+
+# compute the second diffrence 
+d2 <- diff(price, differences = 2)
+
+# set 2 plots stacked
+par(mfrow = c(2,1))
+
+# plot acf of second difference to find q
+acf(d2, main = "ACF of Second Differenced Price (suggests q)")
+
+# Plot pacf of second differenced series to find p
+pacf(d2, main = "PACF of Second Differenced Price (suggests p)")
+
+# reset plot 
+par(mfrow = c(1,1))
+```
+
+If the PACF has big spikes up to lag p and then stops = AR(p)  
+  - Big spike at lag 1 and smaller spike at lag 2  
+  - p = 2  
+  - AR(2)  
+  
+If the ACF has big spikes up to lag q and the stops = MA(q)  
+  - ACF does not cut off cleanly at lag 1 or 2 and tails off gradually across many lags.  
+  - q = 0  
+  - MA(0)  
+If both taper off/do not cut off cleanly = ARMA(p,q)
+
+```{r fit-arima220}
+
+# fit the model based on ACF/PAcf
+m220 <- arima(rocket$Price_in_USD, order = c(2, 2, 0), method = "ML")
+m220
+
+```
+
+With p =2 and q = 0, i fit an ARIMA(2,2,0) model. The fitted model suggests two AR terms, 
+
+  - phi_1 ~ 0.6592  
+  - phi_2 ~ 0.2590
+  
+with small standard errors. 
+
+4. Explicitly write out the model equations for the ARIMA(p, d, q) model you arrived at in part 2. 
+
+From part 2 and 3 I arrived at ARIMA(2,2,0) (p = 2, d = 2, q = 0).  
+
+Model Equation:  
+
+  - Let X_t be the Rocket Motors closing price at time t and, epsilon_t be white noise.  
+  - The second difference:
+    - del^2X_t = (1-B)^2 X_t = X_t - 2X_(t-1) + X_(t-2).  
+  
+  - AR(2) model on second difference series.  
+  
+    - del^2X_t = phi_1del^2X_(t-1) + phi_2del^2X_(t-2) + epsilon_t  
+    
+    - phi_1 ~ 0.6592, phi_2 = 0.2590  
+    
+    - del^2X_t = 0.6592del^2X_(t-1) + 0.2590del^2X_(t-2) + epsilon_t  
+    
+      = X_t - 2X_(t-1) + X_(t-2)  
+      
+      = 0.6592(X_(t-1) - 2X_(t-2) + X_(t-3)) + 0.2590(X_(t-2) - 2X_(t-3) + X_(t-4)) + epsilon_t
