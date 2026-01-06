@@ -1,0 +1,159 @@
+---
+title: "Sahadeo_Assignment7_cheeseTaste"
+author: "Rishi Sahadeo"
+date: "2025-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-data}
+# read lines because of description
+all_lines <- readLines("C:\\Users\\supaq\\OneDrive\\Desktop\\Rutgers Courses\\Regression Methods - Fall 2025\\cheese_data_original-1.txt")
+
+# parse lines until i find the data
+header_line <- which(
+  grepl("\\bCase\\b", all_lines) &
+    grepl("\\btaste\\b", all_lines) &
+    grepl("\\bAcetic\\b", all_lines) &
+    grepl("\\bH2S\\b", all_lines) &
+    grepl("\\bLactic\\b", all_lines)
+)[1]
+
+# read table and save variable
+cheese <- read.delim(
+  file = "C:\\Users\\supaq\\OneDrive\\Desktop\\Rutgers Courses\\Regression Methods - Fall 2025\\cheese_data_original-1.txt",
+  header = TRUE,
+  skip = header_line - 1,
+  stringsAsFactors = FALSE
+)
+
+# check data
+names(cheese)
+head(cheese, 3)
+str(cheese)
+
+```
+
+1) Make three scatterplots:– in each one have the vertical axis represent the taste score (taste), whereas the horizontal axis should be the concentration of each chemical (i.e. Acetic, H2S and Lactic). Be sure to properly label the scatterplots.
+
+```{r scatterplots}
+# taste vs Acetic
+plot(
+  x = cheese$Acetic,
+  y = cheese$taste,
+  xlab = "Natural Log of Acetic Acid Concentration",
+  ylab = "Taste Score",
+  main = "Cheddar Cheese Taste vs Acetic"
+)
+
+# taste vs H2S
+plot(
+  x = cheese$H2S,
+  y = cheese$taste,
+  xlab = "Natural Log of H2S Concentration",
+  ylab = "Taste Score",
+  main = "Cheddar Cheese Taste vs H2S"
+)
+
+# taste vs Lactic
+plot(
+  x = cheese$Lactic,
+  y = cheese$taste,
+  xlab = "Lactic log concentration",
+  ylab = "Taste Score",
+  main = "Cheddar Cheese Taste vs Lactic"
+)
+
+```
+
+
+2. Using the scatterplots created in part 1, does the taste score appear to be linearly related to the concentration of each chemical.
+
+From the three scatterplots from Q1, I assess that:
+
+Acetic plot shows an upward trend where cheeses with higher acetic acid concentrations have higher taste scores, but the points are scattered widely. The relationship is positive yet noisy suggesting a moderate linear association.  
+
+H_2S plot shows the data points ride in a diagonal pattern. As the log concentration of hydrogen sulfide increases, the taste score increases. This plot is the strongest and most linear relationship within the three chemicals.
+
+Lactic plot also shows taste levels increasing as lactic acid concentrations rises. The points follow a relatively smooth, straight path, with less scatter than acetic acid indicating a fairly strong linear trend.
+
+All three chemicals show positive associations with taste, meaning higher concentrations correspond to higher taste scores. The linear pattern appears strongest for H2S, moderate for Lactic and weakest for Acetic.
+
+3. Consider a regression model different from another regression model if they contain a different collection of explanatory variable. (Note the collection of explanatory variables for two models need not be mutually exclusive to be considered different model).  With the taste score as the response variable, list out all the possible regression models one could have (simply indicating what the explanatory variables are for each model suffices)
+
+Following a multiple linear model the general form is:  
+Y_i = Beta_0 + Beta_1(X_1i) + Beta_2(X_2i) + Beta_3(X_3i) + e_i,  
+Y_i = taste and the X's are the chemical concentrations.  
+Since each explanatory variable can either be included or not included, there are 2^3 - 1 = 7 possible non empty models.
+
+Simple Linear models:  
+1. taste = Beta_0 + Beta_1(Acetic) + e  
+2. taste = Beta_0 + Beta_1(H2S) + e  
+3. taste = Beta_0 + Beta_1(Lactic) + e  
+
+Multiple Linear Models:  
+4. taste = Beta_0 + Beta_1(Acetic) + Beta_2(H2S) + e  
+5. taste = Beta_0 + Beta_1(Acetic) + Beta_2(Lactic) + e  
+6. taste = Beta_0 + Beta_1(H2S) + Beta_2(Lactic) + e
+
+Full Model:  
+7. taste = Beta_0 + Beta_1(Acetic) + Beta_2(H2S) + Beta_3(Lactic) + e
+
+Using taste as the dependent variable and the three chemical concentrations as predictors, there are seven possible linear regression models. These include three simple linear models, each with one chemical, three two variable models and only full multiple regression model containing all three predictors. together these combinations represent every possible subset of the three explanatory variables.  
+
+4) For each model identified in part (3), fit the regression model using the least squares estimation method and report the multiple R2 value as well as the adjusted R2 value
+
+```{r fit-extract}
+
+# fit 7 models
+model1 <- lm(taste ~ Acetic, data = cheese)
+model2 <- lm(taste ~ H2S, data = cheese)
+model3 <- lm(taste ~ Lactic, data = cheese)
+model4 <- lm(taste ~ Acetic + H2S, data = cheese)
+model5 <- lm(taste ~ Acetic + Lactic, data = cheese)
+model6 <- lm(taste ~ H2S + Lactic, data = cheese)
+model7 <- lm(taste ~ Acetic + H2S + Lactic, data = cheese)
+
+# collect R^2 and Adjusted R^2 values
+model_summaries <- data.frame(
+  Model = paste0("Model ", 1:7),
+  Formula = c("taste ~ Acetic",
+              "taste ~ H2S",
+              "taste ~ Lactic",
+              "taste ~ Acetic + H2S",
+              "taste ~ Acetic + Lactic",
+              "taste ~ H2S + Lactic",
+              "taste ~ Acetic + H2S + Lactic"),
+  Rsquared = c(summary(model1)$r.squared,
+               summary(model2)$r.squared,
+               summary(model3)$r.squared,
+               summary(model4)$r.squared,
+               summary(model5)$r.squared,
+               summary(model6)$r.squared,
+               summary(model7)$r.squared),
+  Adj_RSquared = c(summary(model1)$adj.r.squared,
+                   summary(model2)$adj.r.squared,
+                   summary(model3)$adj.r.squared,
+                   summary(model4)$adj.r.squared,
+                   summary(model5)$adj.r.squared,
+                   summary(model6)$adj.r.squared,
+                   summary(model7)$adj.r.squared)
+)
+
+# display
+print(model_summaries)
+```
+
+Each of the seven possible models was fit using least squares, and both R^2 and Adjusted R^2 were computed to assess goodness of fit.  
+
+5) Which model identified in part (3) gives the best fit for the taste scores in the dataset?  Justify your answer.  
+
+The full model with Acetic + H2S + Lactic, Model7 is the best fit for the taste scores in this dataset. It has an R^2 of 0.6518, which beats out all others with a tiny edge over Model6 who had an R^2 of 0.6517. That tiny edge means it explains the most variation about 65.18%.
+
+6) If one were concerned with constructing a model that can model taste scores in general (i.e. beyond just those for the cheeses contained in this dataset), which model identified in part (3) would be the best in terms of balancing explanatory power (i.e. the ability to explain the variation in the taste scores) vs. complexity (i.e. the number of explanatory variables in the model)?  Justify your answer.
+
+The model taste ~ H2S + Lactic (Model 6) is best for modeling taste scores in general. It achieves the highest Adjusted R^2 at 0.6259 which balances explanatory power against model size. Although the full model Acetic + H2S + Lactic (Model 7) has a nearly identical R^2 (0.6518 vs 0.6517), its lower Adjusted R^2 of 0.6116 shows that adding Acetic increases complexity without providing meaningful explanatory power. Model 6 captures the same signal with fewer predictions.
+
