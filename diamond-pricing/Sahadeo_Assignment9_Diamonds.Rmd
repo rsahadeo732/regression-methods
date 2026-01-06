@@ -1,0 +1,79 @@
+---
+title: "Sahadeo_Assignment9_Diamonds"
+author: "Rishi Sahadeo"
+date: "2025-11-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Fit a linear model where the response variable is the diamond price and the explanatory variable is the clarity rating. Write out the model equation for the diamond price. 
+
+```{r}
+
+# load data
+dia <- read.table("C:\\Users\\supaq\\OneDrive\\Desktop\\Rutgers Courses\\Regression Methods - Fall 2025\\diamonds_data_original.txt",
+                  header = TRUE,
+                  sep = "\t",
+                  skip = 26)
+
+# order clarity
+dia$CLARITY <- factor(
+  dia$CLARITY,
+  levels = c("IF", "VVS1", "VVS2", "VS1", "VS2")
+)
+
+# fit the model
+model1 <- lm(PRICE ~ CLARITY, data = dia)
+summary(model1)
+
+```
+
+The model equation for the diamond price in Singapore dollars is:  
+
+  - PRICE_hat = 2694.8 + 2872.9(D_VVS1) + 2661.8(D_VVS2) + 2362.3(D_VS1) + 3163.4(D_VS2)  
+   
+    - where: D_VVS1 = 1 if diamond i has clarity VVS1, 0 otherwise
+    - similar for VVS2, VS1, VS2
+    - IF = intercept, Beta_0 = 2694.8
+
+2. Provide an estimate of the mean price of a diamond within each clarity rating level.
+
+```{r means}
+
+# means for each level
+aggregate(PRICE ~ CLARITY, data = dia, mean)
+
+```
+
+The estimated mean price in Singapore dollars of a diamond within each clarity rating level is:  
+
+  - IF: $2694.77
+  - VVS1:$5567.64
+  - VVS2: $5356.55
+  - VS1: $5057.04
+  - VS2: $5858.17
+
+3. It is desired to know whether there is a statistically significant relationship between diamond price and clarity rating. What is the method one should use to answer this question? Execute this methodology and report what conclusion would one come to? 
+
+```{r anova}
+
+# test significance
+anova(model1)
+
+```
+
+Null Hypothesis: 
+
+  - mu_if = mu_vvs1 = mu_vvs2 = mu_vs1 = mu_vs2
+  
+Alternate Hypothesis:  
+
+  - at least one mean differs
+  
+p-val = 2.216e-05 < 0.05, Reject the null
+
+Using a one way ANOVA, the effect of clarity on price is statistically significant. We conclude that diamond price is not the same across clarity levels and clarity is related to price
+
