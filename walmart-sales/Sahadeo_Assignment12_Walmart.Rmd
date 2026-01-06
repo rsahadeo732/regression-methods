@@ -1,0 +1,49 @@
+---
+title: "Sahadeo_Assignment12"
+author: "Rishi Sahadeo"
+date: "2025-11-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-data}
+wal <- read.table("walmart_stock-original-3.txt", header = TRUE)
+head(wal)
+names(wal)
+
+wal_close <- wal$Close
+str(wal_close)
+
+```
+
+1. Construct a partial autocorrelation plot of Walmart’s closing stock price. Again ensure the plot is adequately labeled.
+
+```{r pacf-plot}
+pacf(
+  wal_close,
+  main = "PACF of Walmart Closing Prices (Feb 2001 - Feb 2002)",
+  xlab = "Lag",
+  ylab = "Partial Autocorrelation (PACF)"
+)
+
+```
+
+The PACF for Walmart’s closing prices has one big spike at lag 1, and all the other lags are small and stay inside the blue lines. This means today’s price is strongly tied to yesterday’s price, but prices from two or more days ago don’t add much extra information once we already know yesterday’s value. This kind of pattern is what we usually see for a series that behaves like an AR process.
+
+2. What kind of a time-series model would be most appropriate for modeling Walmart’s closing stock price (i.e. strictly MA, strictly AR or ARMA)?  Justify, your conclusion (you will need to refer back to your solutions from Assignment 11 to answer this question). It is not needed to specify the orders of the model, just the kind.
+
+```{r acf}
+
+acf(
+  wal_close,
+  main = "ACF of Walmart Closing Prices (Feb 2001 - Feb 2002)",
+  xlab = "Lag",
+  ylab = "Autocorrelation"
+)
+
+```
+
+From the ACF and PACF plots, Walmart’s closing prices look like they follow an AR-type pattern. The ACF starts very high and then slowly fades out as the lag increases, while the PACF has one big spike at lag 1 and the rest of the lags are small and stay inside the bounds. The combination of ACF tapering off and PACF cutting off after lag 1 reflects an autoregressive process. So a strictly AR model is more appropriate here than a strictly MA or ARMA model.

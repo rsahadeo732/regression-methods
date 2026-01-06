@@ -1,0 +1,80 @@
+---
+title: "Sahadeo_Assignment11_Walmart"
+author: "Rishi Sahadeo"
+date: "2025-11-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyverse)
+```
+
+1. Graphically display Walmart’s closing stock price overtime in an appropriate plot.  Be sure to appropriate label the plot.
+
+```{r load-data}
+
+walmart <- read.table("C:\\Users\\supaq\\OneDrive\\Desktop\\Rutgers Courses\\Regression Methods - Fall 2025\\walmart_stock-original-3.txt", header = TRUE)
+
+head(walmart)
+
+```
+
+```{r clean-data}
+
+# convert date col to data class
+walmart$Date <- as.Date(walmart$Date, format = "%d-%b-%y")
+
+# check structure
+str(walmart)
+
+```
+
+```{r time-series}
+
+ggplot(walmart, aes(Date, Close)) +
+  geom_line() +
+  labs(title = " Walmart Closing Stock Price from Feb 2001 - Feb 2002",
+       x = "Date",
+       y = "Closing Stock Price in USD")
+
+```
+
+This line graph shows the time series of Walmart’s daily closing stock price from February 2001 through February 2002. The plot indicates that the stock price fluctuates throughout the year, with a noticeable dip around late summer/early fall 2001 followed by a general upward trend toward early 2002.
+
+2. Construct an autocorrelation plot of Walmart’s closing stock price.  Again ensure the plot is adequately labeled.
+
+```{r walmart-autocorrelation, echo=TRUE}
+
+# acf plot for Walmart closing stock prices
+acf(walmart$Close,
+    main = "Autocorrelation of Walmart Closing Stock Price",
+    xlab = "Lag - Trading Days",
+    ylab = "Autocorrelation")
+
+```
+
+This autocorrelation plot shows the sample autocorrelation of Walmart’s daily closing stock prices at different lags. The autocorrelation at lag 1 is very close to 1, and the autocorrelations remain positive and above the significance bounds for many lags, although they gradually decrease as the lag increases. This indicates that prices on nearby trading days are highly related and that the series shows strong persistence over time.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
