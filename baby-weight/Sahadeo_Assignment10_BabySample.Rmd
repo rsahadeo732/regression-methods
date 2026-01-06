@@ -1,0 +1,189 @@
+---
+title: "Sahadeo_Assignment10_BabySample"
+author: "Rishi Sahadeo"
+date: "2025-11-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Treating the variable Preemie as the response variable, and MomAge as the explanatory variable, graphically display the data in an appropriate plot. 
+
+```{r loaddata}
+set.seed(1347)
+
+# load data
+baby <- read.delim("babysamp-98_raw-datafile-1.txt", header = TRUE, sep = "\t", skip = 14, na.strings = c("NA", ""))
+
+# display data
+head(baby)
+str(baby)
+
+# convert logical to 0/1
+baby$preemie01 <- as.numeric(baby$preemie)
+
+plot(
+  x = baby$MomAge,
+  y = jitter(baby$preemie01, amount = 0.05),
+  xlab = "Mother's Age at Birth (years)",
+  ylab = "Preemie (1 = TRUE, 0 = FALSE)",
+  main = "Preemie (response) vs MomAge (explanatory)",
+  pch = 19, cex = 0.7, col = "blue"
+)
+abline(h = c(0, 1), lty = 3, col = "black")
+
+```
+
+To visualize the relationship with the response on the vertical axis, I converted the binary variable preemie to 0/1 and created a jittered scatter plot with MomAge on the x-axis and preemie on the y-axis. The small vertical jitter prevents points from stacking at 0 and 1, making the distribution of the outcomes visible across maternal ages. Visually, most births are full-term (points near 0) across the age range, while preterm cases (points near 1) are fewer and appear scattered rather than showing a strong trend by age in this sample.
+
+2. Among babies that were born prematurely, calculate the mean age of the mothers at birth Similarly, among the babies that were born full-term, calculate the mean age of the mothers at birth. Comment on the results.  
+
+```{r means}
+
+# counts by group
+pre_n <- table(baby$preemie)
+
+# means and sd by group
+mu <- tapply(baby$MomAge, baby$preemie, mean, na.rm = TRUE)
+sd <- tapply(baby$MomAge, baby$preemie, sd, na.rm = TRUE)
+
+# summary
+display <- data.frame(
+  preemie = c(FALSE, TRUE),
+  n = as.integer(pre_n[c("FALSE", "TRUE")]),
+  mean_MomAge = as.numeric(mu[c("FALSE", "TRUE")]),
+  sd_MomAge = as.numeric(sd[c("FALSE", "TRUE")])
+)
+
+display
+
+```
+
+Among 174 full term births, the mean maternal age was 26.5 years.  
+
+Among 26 premature births, the mean maternal age was 27.3 years.  
+
+A difference of +0.8 years. Mothers of premature babies were older on average in this sample. The small sample size of 26 preemies suggests caution in interpretation.
+
+3. It is desired to model whether a baby is prematurely born using the mother’s birth age as an explanatory variable. Fit an appropriate model using the data provided and write out the formula for the model equation.  
+
+```{r fit-logit}
+
+# logical fit for preemie
+fit <- glm(preemie ~ MomAge, data = baby, family = binomial(link = "logit"))
+summary(fit)
+
+# coefficients
+coef(fit)
+
+# odds ratio for a 1 year increase
+exp(coef(fit)["MomAge"])
+
+```
+
+I fit a logistic regression model with preemie as the response and MomAge as the predictor using glm(). The fitted model is:  
+
+  - logit p_hat = -2.4273 + 0.0196 * MomAge
+  
+4. Create another version of the plot created in part (1) displaying the same data with the graph of model equation arrived at in part (3) superimposed.  
+
+```{r overlay}
+
+# grid for ages and fitted probabilities for previous model
+age_grid <- data.frame(MomAge = seq(min(baby$MomAge, na.rm = TRUE),
+                                    max(baby$MomAge, na.rm = TRUE),
+                                    length.out = 200))
+p_hat <- predict(fit, newdata = age_grid, type = "response")
+
+# redraw the jitter plot
+plot(
+  x = baby$MomAge,
+  y = jitter(as.numeric(baby$preemie), amount = 0.05),
+  xlab = "Mother's Age at Birth in Years",
+  ylab = "Preemie - 1 = TRUE, 0 = FALSE",
+  main = "Preemie vs MomAge with Fitted Logistic Curve",
+  pch = 19, cex = 0.7, col = "black"
+)
+abline(h = c(0,1), lty = 7, col = "red")
+
+# fitted logistic curve
+lines(age_grid$MomAge, p_hat, lwd = 2)
+
+```
+
+I recreated the jittered 0/1 plot of preemie vs MomAge and superimposed the fitted logistic curve from Q3. The curve is the models predicted probability evaluated over the observed age range.  
+
+5. Is there a statistically significant association between the probability a baby is born prematurely and the mother’s birth age? Explain the methodology you used to arrive at your conclusion.  
+
+```{r significance}
+
+# Wald (z) test
+summary(fit)$coef
+
+# 95% Wald Ci for slope
+b1 <- coef(fit)["MomAge"]
+se1 <- summary(fit)$coef["MomAge", "Std. Error"]
+wald_ci <- b1 + c(-1, 1) * 1.96 * se1
+wald_ci
+
+# likelihood-ratio test vs intercept only model
+fit0 <- glm(preemie ~ 1, data = baby, family = binomial)
+anova(fit0, fit, test = "Chisq")
+```
+
+To test whether prematurity is associated with mother's age, I tested:  
+
+  - H_0: Beta_1 = 0 in the logistic model logit(p) = Beta_0 + Beta_1(MomAge)
+  
+Using the fitted model, the Wald test gives:  
+
+  - z = 0.610
+  - p = 0.542
+  - 95% CI for Beta_1 = (-0.0433, 0.0825), which includes 0.
+  
+A likelihood ratio test comparing the model with MomAge to an intercept-only model also yields p - 0.543.  
+
+Conclusion:  At the 5% level, there is no statistically significant association between prematurity and mother's age in this sample. 
+
+6. Create a version of the plot created in part (4) with bands superimposed that encompass with level of coverage 95% the ‘true’ probability a baby will be born prematurely for any given age.  
+
+```{r confidence-bands}
+
+# predict on logit to get SEs
+pred <- predict(fit, newdata = age_grid, type = "link", se.fit = TRUE)
+
+eta_hat <- pred$fit
+se_eta <- pred$se.fit
+crit <- qnorm(0.975)
+
+# 95% CI on logit scale
+lo_eta <- eta_hat - crit * se_eta
+hi_eta <- eta_hat + crit * se_eta
+
+# inverse-logit to probabilities
+inv_logit <- function(z) 1/(1+exp(-z))
+p_hat <- inv_logit(eta_hat)
+p_lo <- inv_logit(lo_eta)
+p_hi <- inv_logit(hi_eta)
+
+# replot data
+plot(
+  x = baby$MomAge,
+  y = jitter(as.numeric(baby$preemie), amount = 0.05),
+  xlab = "Mother's Age at Birth (years)",
+  ylab = "Preemie (1 = TRUE, 0 = FALSE)",
+  main = "Preemie vs MomAge with Fitted Logistic Curve and 95% Bands",
+  pch = 19, cex = 0.7, col = "black"
+)
+abline(h = c(0,1), lty = 7, col = "red")
+
+# fitteed curve and CI boundaries
+lines(age_grid$MomAge, p_hat, lwd = 2)
+lines(age_grid$MomAge, p_lo, lwd = 1, lty = 2)
+lines(age_grid$MomAge, p_hi, lwd = 1, lty = 2)
+
+```
+
+I constructed pointwise 95% confidence bands for the mean probability curve by forming eta_hat(x) +- 1.96SE on the logit scale from the GLM, then inverse-logit transforming to the probability scale. The wide, nearly horizontal bands reflect high uncertainty and no clear age effect.
